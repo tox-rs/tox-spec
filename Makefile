@@ -10,8 +10,5 @@ spec.html: spec.md
 spec-pandoc.html: spec.md
 	pandoc $(PANDOC_ARGS) -f $(FORMAT) -t html5 $< -o $@
 
-check: spec.md .md-style.rb
-	mdl -w -s .md-style.rb spec.md
-
 format: spec.md
 	pandoc $(PANDOC_ARGS) -f $(FORMAT) -t $(FORMAT) $< -o $<
