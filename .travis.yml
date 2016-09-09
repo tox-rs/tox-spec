@@ -22,3 +22,14 @@ script:
 branches:
   only:
     - master
+
+after_success:
+  - |
+    if [[ "$TRAVIS_PULL_REQUEST" == "false" ]] \
+        && [[ "$TRAVIS_BRANCH" == "master" ]]
+    then
+        mkdir www
+        cp rust.css www/
+        cp spec.html www/index.html
+        ./deploy-gh-pages.sh
+    fi
