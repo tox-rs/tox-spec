@@ -336,6 +336,7 @@ e.g. [Ping Request (0x00)](#ping-request-0x00).
 | `0x8c`     | Onion Response 3    |
 | `0x8d`     | Onion Response 2    |
 | `0x8e`     | Onion Response 1    |
+| `0xf0`     | Bootstrap Info      |
 
 # DHT
 
@@ -879,6 +880,20 @@ There are 2 cases when this can happen:
 There is nothing that can be done when very restrictive NAT is in play, thus it
 is recommended to use the most common `IP` returned by the peers and ignore
 other `IP:port`s.
+
+## DHT Bootstrap Info (0xf0)
+
+Bootstrap nodes are regular Tox nodes with a stable DHT public key. This means
+the DHT public key does not change across restarts. DHT bootstrap nodes have
+one additional request kind: Bootstrap Info. The request is simply a packet of
+length 78 bytes where the first byte is 0xf0. The other bytes are ignored.
+
+The response format is as follows:
+
+| Length | Type   | [Contents](#protocol-packet) |
+|:-------|:-------|:-----------------------------|
+| `4`    | Word32 |  Bootstrap node version      |
+| `256`  | Bytes  |  Message of the day          |
 
 # LAN discovery
 
