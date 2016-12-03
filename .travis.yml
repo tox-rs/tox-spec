@@ -31,5 +31,6 @@ after_success:
         mkdir www
         cp rust.css www/
         cp spec.html www/index.html
+        cp -r img www/
         ./deploy-gh-pages.sh
     fi
