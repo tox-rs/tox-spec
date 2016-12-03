@@ -56,12 +56,12 @@
 /* General structure */
 
 body {
-    background-color: white;
+    background-color: #f1f1f1;
     margin: 0 auto;
     padding: 0 15px;
-    font-family: "Source Serif Pro", Georgia, Times, "Times New Roman", serif;
+    font-family: "Fira Sans", "Helvetica Neue", Helvetica, Arial, sans-serif;
     font-size: 18px;
-    color: #333;
+    color: #000000;
     line-height: 1.428571429;
 
     -webkit-font-feature-settings: "kern", "liga";
@@ -143,8 +143,8 @@ h6 {
 p:before {
     align: left;
     position: absolute;
-    margin-left: -29px;
-    color: #CCC;
+    margin-left: -60px;
+    color: #4b5f6d;
     content: counter(paragraph);
     counter-increment: paragraph;
 }
@@ -181,7 +181,7 @@ footer {
 
 a {
     text-decoration: none;
-    color: #428BCA;
+    color: #428Be8;
     background: transparent;
 }
 a:hover, a:focus {
@@ -220,7 +220,7 @@ pre {
 }
 code {
     padding: 0 2px;
-    color: #8D1A38;
+    color: #009417;
 }
 pre code {
     padding: 0;
@@ -344,7 +344,7 @@ table tr.odd {
 
 table td,
 table th {
-    border: 1px solid #ddd;
+    border: 1px solid #aaa;
     padding: 5px;
 }
 
