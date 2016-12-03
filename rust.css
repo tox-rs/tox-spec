@@ -353,7 +353,7 @@ table th {
 .rusttest { display: none; }
 pre.rust { position: relative; }
 a.test-arrow {
-    display: inline-block;
+    display: none;
     position: absolute;
 
     background-color: #4e8bca;
