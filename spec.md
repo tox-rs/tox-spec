@@ -749,8 +749,8 @@ If `NAT ping request` is…
 -   … from own `friend`, a [`NAT ping response`](#nat-ping-response) with the
     same `random number` that request has should be sent back via the nodes
     that know the friend sending the request.
-    -   If there are no known nodes that know the `friend`, packet will
-        be dropped.
+    -   If there are no known nodes that know the `friend`, packet will be
+        dropped.
 -   … not from own `friend`, packet will be dropped.
 
 #### NAT ping response
@@ -1176,8 +1176,8 @@ How it accomplishes each of those points:
         connection (no effect).
 
     -   Attacker captures a server response and sends it to the client next
-        time they try to connect to the server: Client will never confirm
-        the connection. (See: `TCP_client`)
+        time they try to connect to the server: Client will never confirm the
+        connection. (See: `TCP_client`)
 
     -   Attacker tries to impersonate a server: They won't be able to decrypt
         the handshake and won't be able to respond.
@@ -1195,8 +1195,8 @@ How it accomplishes each of those points:
 
 1.  2 bytes before each packet of encrypted data denote the length. We assume a
     functioning TCP will deliver bytes in order which makes it work. If the TCP
-    doesn't it most likely means it is under attack and for that see the
-    next point.
+    doesn't it most likely means it is under attack and for that see the next
+    point.
 
 2.  The following attacks are prevented:
 
@@ -1828,8 +1828,8 @@ requirements:
 
 1.  The handshake must not leak the long term public keys of the peers to a
     possible attacker who would be looking at the packets but each peer must
-    know for sure that they are connecting to the right peer and not
-    an impostor.
+    know for sure that they are connecting to the right peer and not an
+    impostor.
 
 2.  A connection must be able of being established if only one of the peers has
     the information necessary to initiate a connection (DHT public key of the
@@ -2354,6 +2354,7 @@ initial (sent from node D to node C):
 -   Encrypted with the temporary symmetric key of Node A and the nonce:
 
     -   `IP_Port` (of us)
+
 -   Data to send back
 
 (sent from node A to us):
