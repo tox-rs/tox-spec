@@ -1,17 +1,32 @@
 language: haskell
 ghc: 7.8
+sudo: required
 
 cache:
   directories:
     - $HOME/.cabal
     - $HOME/.ghc
+    - $HOME/.local/bin
+    - $HOME/.stack
 
 install:
   - mkdir -p ~/rust-installer ~/rust
   - curl -sL https://static.rust-lang.org/rustup.sh -o ~/rust-installer/rustup.sh
   - sh ~/rust-installer/rustup.sh --prefix=~/rust --spec=stable -y --disable-sudo 2> /dev/null
   - export PATH=$PATH:$HOME/rust/bin
-  - cabal install pandoc
+  # pandoc with fixed https://github.com/jgm/pandoc/issues/3277
+  - |
+    echo 'deb http://download.fpcomplete.com/ubuntu precise main' \
+        | sudo tee /etc/apt/sources.list.d/fpco.list
+  - sudo apt-get update
+  - sudo apt-get install stack -y --force-yes
+  - |
+    git clone --depth 1 https://github.com/jgm/pandoc.git ~/pandoc
+    ( cd ~/pandoc \
+        && git submodule update --init \
+        && stack setup \
+        && stack install --test )
+    export PATH=$PATH:$HOME/.local/bin
 
 script:
   - make
