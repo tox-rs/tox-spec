@@ -1,13 +1,18 @@
 language: haskell
-ghc: 7.8
-sudo: required
+ghc: 7.10
 
 cache:
   directories:
     - $HOME/.cabal
     - $HOME/.ghc
     - $HOME/.local/bin
-    - $HOME/pandoc/.stack
+    - $HOME/.stack
+
+before_install:
+# Download and unpack the stack executable
+ - mkdir -p ~/.local/bin
+ - export PATH=$HOME/.local/bin:$PATH
+ - travis_retry curl -L https://www.stackage.org/stack/linux-x86_64 | tar xz --wildcards --strip-components=1 -C ~/.local/bin '*/stack'
 
 install:
   - mkdir -p ~/rust-installer ~/rust
@@ -16,21 +21,13 @@ install:
   - export PATH=$PATH:$HOME/rust/bin
   # pandoc with fixed https://github.com/jgm/pandoc/issues/3277
   - |
-    if [[ ! -a ~/.local/bin/pandoc ]] || [[ ! -d ~/pandoc ]]
-    then
-        echo 'deb http://download.fpcomplete.com/ubuntu precise main' \
-            | sudo tee /etc/apt/sources.list.d/fpco.list
-        sudo apt-get update
-        sudo apt-get install stack -y --force-yes
-        git clone \
-            --depth 1 \
-            --recursive \
-            https://github.com/jgm/pandoc.git ~/pandoc
-        ( cd ~/pandoc \
-            && stack setup \
-            && stack install --test )
-    fi
-    export PATH=$PATH:$HOME/.local/bin
+    git clone \
+        --depth 1 \
+        --recursive \
+        https://github.com/jgm/pandoc.git ~/pandoc
+    ( cd ~/pandoc \
+        && stack setup \
+        && stack install --test )
 
 script:
   - make
