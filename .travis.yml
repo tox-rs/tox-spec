@@ -8,6 +8,7 @@ cache:
     - $HOME/.ghc
     - $HOME/.local/bin
     - $HOME/.stack
+    - $HOME/pandoc/.stack
 
 install:
   - mkdir -p ~/rust-installer ~/rust
@@ -16,16 +17,20 @@ install:
   - export PATH=$PATH:$HOME/rust/bin
   # pandoc with fixed https://github.com/jgm/pandoc/issues/3277
   - |
-    echo 'deb http://download.fpcomplete.com/ubuntu precise main' \
-        | sudo tee /etc/apt/sources.list.d/fpco.list
-  - sudo apt-get update
-  - sudo apt-get install stack -y --force-yes
-  - |
-    git clone --depth 1 https://github.com/jgm/pandoc.git ~/pandoc
-    ( cd ~/pandoc \
-        && git submodule update --init \
-        && stack setup \
-        && stack install --test )
+    if [[ ! -a ~/.local/bin/pandoc ]] || [[ ! -d ~/pandoc ]]
+    then
+        echo 'deb http://download.fpcomplete.com/ubuntu precise main' \
+            | sudo tee /etc/apt/sources.list.d/fpco.list
+        sudo apt-get update
+        sudo apt-get install stack -y --force-yes
+        git clone \
+            --depth 1 \
+            --recursive \
+            https://github.com/jgm/pandoc.git ~/pandoc
+        ( cd ~/pandoc \
+            && stack setup \
+            && stack install --test )
+    fi
     export PATH=$PATH:$HOME/.local/bin
 
 script:
