@@ -105,12 +105,12 @@ their lower bound is 0. Signed integer types are not used. The binary encoding
 of all integer types is a fixed-width byte sequence with the integer encoded in
 [Big Endian](https://en.wikipedia.org/wiki/Endianness) unless stated otherwise.
 
-| Type name | C type     | Length | Upper bound                               |
-|:----------|:-----------|:-------|:------------------------------------------|
-| Word8     | `uint8_t`  | 1      | 255 (0xff)                                |
-| Word16    | `uint16_t` | 2      | 65535 (0xffff)                            |
-| Word32    | `uint32_t` | 4      | 4294967295 (0xffffffff)                   |
-| Word64    | `uint64_t` | 8      | 18446744073709551615 (0xffffffffffffffff) |
+| Type name | C type     | Rust type | Length | Upper bound                               |
+|:----------|:-----------|:----------|:-------|:------------------------------------------|
+| Word8     | `uint8_t`  | `u8`      | 1      | 255 (0xff)                                |
+| Word16    | `uint16_t` | `u16`     | 2      | 65535 (0xffff)                            |
+| Word32    | `uint32_t` | `u32`     | 4      | 4294967295 (0xffffffff)                   |
+| Word64    | `uint64_t` | `u64`     | 8      | 18446744073709551615 (0xffffffffffffffff) |
 
 ## Strings
 
