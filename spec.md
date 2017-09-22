@@ -611,6 +611,9 @@ A Ping Response is a Ping Packet with the response flag set to True.
 The Nodes Service is used to query another DHT node for up to 4 nodes they know
 that are the closest to a requested node.
 
+The DHT Nodes RPC service uses the
+[Packed Node Format](node-info-packed-node-format).
+
 #### Nodes Request (0x02)
 
 | Length | Type       | [Contents](#rpc-services) |
@@ -632,9 +635,7 @@ An IPv4 node is 39 bytes, an IPv6 node is 51 bytes, so the maximum size is
 Nodes responses should contain the 4 closest nodes that the sender of the
 response has in their list of known nodes.
 
-### Packed node format
-
-The DHT Nodes RPC service uses the Packed Node Format.
+## DHT operation
 
 Only the UDP Protocol (IP Type `2` and `10`) are used in the DHT module when
 sending nodes with the packed node format. This is because the TCP Protocol is
