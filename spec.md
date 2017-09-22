@@ -960,199 +960,63 @@ LAN discovery is how Tox handles and makes everything work well on LAN.
 
 # TCP server
 
-The TCP server in tox has the goal of acting like a TCP relay between clients
-who cannot connect directly to each other or who for some reason are limited to
+The TCP server has the goal of acting like a TCP relay between clients who
+cannot connect directly to each other or who for some reason are limited to
 using the TCP protocol to connect to each other. `TCP_server` is typically run
 only on actual server machines but any Tox client could host one as the api to
 run one is exposed through the tox.h api.
 
 To connect to a hosted TCP server toxcore uses the TCP client module.
 
-The TCP server implementation in toxcore can currently either work on epoll on
-linux or using unoptimized but portable socket polling.
-
 TCP connections between the TCP client and the server are encrypted to prevent
-an outsider from knowing information like who is connecting to whom just be
+an outsider from knowing information like who is connecting to whom just from
 looking at someones connection to a TCP server. This is useful when someone
-connects though something like Tor for example. It also prevents someone from
+connects though something like Tor for example. It also prevents 3rd party from
 injecting data in the stream and makes it so we can assume that any data
 received was not tampered with and is exactly what was sent by the client.
 
-When a client first connects to a TCP server he opens up a TCP connection to
-the ip and port the TCP server is listening on. Once the connection is
-established he then sends a handshake packet, the server then responds with his
-own and a secure connection is established. The connection is then said to be
-unconfirmed and the client must then send some encrypted data to the server
-before the server can mark the connection as confirmed. The reason it works
-like this is to prevent a type of attack where a peer would send a handshake
-packet and then time out right away. To prevent this the server must wait a few
-seconds for a sign that the client received his handshake packet before
-confirming the connection. The both can then communicate with each other using
-the encrypted connection.
-
 The TCP server essentially acts as just a relay between 2 peers. When a TCP
-client connects to the server he tells the server which clients he wants the
-server to connect him to. The server will only let two clients connect to each
+client connects to the server it tells the server which clients it wants the
+server to connect it to. The server will only let two clients connect to each
 other if both have indicated to the server that they want to connect to each
 other. This is to prevent non friends from checking if someone is connected to
 a TCP server. The TCP server supports sending packets blindly through it to
 clients with a client with public key X (OOB packets) however the TCP server
-does not give any feedback or anything to say if the packet arrived or not and
-as such it is only useful to send data to friends who may not know that we are
-connected to the current TCP server while we know they are. This occurs when
-one peer discovers the TCP relay and DHT public key of the other peer before
-the other peer discovers its DHT public key. In that case OOB packets would be
-used until the other peer knows that the peer is connected to the relay and
-establishes a connection through it.
+does not give any feedback regarding whether the packet arrived or not and thus
+it is only useful to send data to friends who may not know that we are
+connected to the current TCP server while we know they are.
+
+This occurs when one peer discovers the TCP relay and DHT public key of the
+other peer before the other peer discovers its DHT public key. In that case OOB
+packets would be used until the other peer knows that the peer is connected to
+the relay and establishes a connection through it.
 
 In order to make toxcore work on TCP only the TCP server supports relaying
 onion packets from TCP clients and sending any responses from them to TCP
 clients.
 
-To establish a secure connection with a TCP server send the following 128 bytes
-of data or handshake packet to the server:
+## TCP Connection
 
-| Length | Contents                     |
-|:-------|:-----------------------------|
-| `32`   | DHT public key of client     |
-| `24`   | Nonce for the encrypted data |
-| `72`   | Payload (plus MAC)           |
+When a client first connects to a TCP server they open up a TCP connection to
+the IP and port the TCP server is listening on. Once the connection is
+established a [Handshake Request](#handshake-request) packet is sent. The
+server then responds with its [Handshake Response](#handshake-response) and a
+secure connection is established. The connection is then said to be unconfirmed
+and the client must then send some encrypted data to the server before the
+server can mark the connection as confirmed.
 
-Payload is encrypted with the DHT private key of the client and public key of
-the server and the nonce:
+The reason it works like this is to prevent a type of attack where a peer would
+send a handshake packet and then time out right away. To prevent this the
+server must wait a few seconds for a sign that the client received handshake
+packet before confirming the connection. The both can then communicate with
+each other using the encrypted connection.
 
-| Length | Contents   |
-|:-------|:-----------|
-| `32`   | Public key |
-| `24`   | Base nonce |
-
-The base nonce is the one TCP client wants the TCP server to use to encrypt the
-packets sent to the TCP client.
-
-The first 32 bytes are the public key (DHT public key) that the TCP client is
-announcing itself to the server with. The next 24 bytes are a nonce which the
-TCP client uses along with the secret key associated with the public key in the
-first 32 bytes of the packet to encrypt the rest of this 'packet'. The
-encrypted part of this packet contains a temporary public key that will be used
-for encryption during the connection and will be discarded after. It also
-contains a base nonce which will be used later for encrypting packets sent to
-the TCP client.
-
-If the server decrypts successfully the encrypted data in the handshake packet
-and responds with the following handshake response of length 96 bytes:
-
-| Length | Contents                     |
-|:-------|:-----------------------------|
-| `24`   | Nonce for the encrypted data |
-| `72`   | Payload (plus MAC)           |
-
-Payload is encrypted with the private key of the server and the DHT public key
-of the client and the nonce:
-
-| Length | Contents   |
-|:-------|:-----------|
-| `32`   | Public key |
-| `24`   | Base nonce |
-
-The base nonce is the one the TCP server wants the TCP client to use to encrypt
-the packets sent to the TCP server.
-
-The client already knows the long term public key of the server so it is
-omitted in the response, instead only a nonce is present in the unencrypted
-part. The encrypted part of the response has the same elements as the encrypted
-part of the request: a temporary public key tied to this connection and a base
-nonce which will be used later when decrypting packets received from the TCP
-client both unique for the connection.
-
-In toxcore the base nonce is generated randomly like all the other nonces, it
-must be randomly generated to prevent nonce reuse. For example if the nonce
-used was 0 for both sides since both sides use the same keys to encrypt packets
-they send to each other, two packets would be encrypted with the same nonce.
-These packets could then be possibly replayed back to the sender which would
-cause issues. A similar mechanism is used in `net_crypto`.
-
-After this the client will know the connection temporary public key and base
-nonce of the server and the server will know the connection base nonce and
-temporary public key of the client.
-
-The client will then send an encrypted packet to the server, the contents of
-the packet do not matter and it must be handled normally by the server (ex: if
-it was a ping send a pong response. The first packet must be any valid
-encrypted data packet), the only thing that does matter is that the packet was
-encrypted correctly by the client because it means that the client has
-correctly received the handshake response the server sent to it and that the
-handshake the client sent to the server really came from the client and not
-from an attacker replaying packets. The server must prevent resource consuming
-attacks by timing out clients if they do not send any encrypted packets so the
-server to prove to the server that the connection was established correctly.
-
-Toxcore does not have a timeout for clients, instead it stores connecting
-clients in large circular lists and times them out if their entry in the list
-gets replaced by a newer connection. The reasoning behind this is that it
-prevents TCP flood attacks from having a negative impact on the currently
-connected nodes. There are however much better ways to do this and the only
-reason toxcore does it this way is because writing it was very simple. When
-connections are confirmed they are moved somewhere else.
-
-When the server confirms the connection he must look in the list of connected
-peers to see if he is already connected to a client with the same announced
-public key. If this is the case the server must kill the previous connection
-because this means that the client previously timed out and is reconnecting.
-Because of Toxcore design it is very unlikely to happen that two legitimate
-different peers will have the same public key so this is the correct behavior.
-
-Encrypted data packets look like this to outsiders:
-
-| Length   | Contents                  |
-|:---------|:--------------------------|
-| `2`      | `uint16_t` length of data |
-| variable | encrypted data            |
-
-In a TCP stream they would look like:
-`[[length][data]][[length][data]][[length][data]]...`.
-
-Both the client and server use the following (temp public and private (client
-and server) connection keys) which are each generated for the connection and
-then sent to the other in the handshake and sent to the other. They are then
-used like the next diagram shows to generate a shared key which is equal on
-both sides.
-
-    Client:                                     Server:
-    generate_shared_key(                        generate_shared_key(
-    [temp connection public key of server],     [temp connection public key of client],
-    [temp connection private key of client])    [temp connection private key of server])
-    =                                           =
-    [shared key]                                [shared key]
-
-The generated shared key is equal on both sides and is used to encrypt and
-decrypt the encrypted data packets.
-
-each encrypted data packet sent to the client will be encrypted with the shared
-key and with a nonce equal to: (client base nonce + number of packets sent so
-for the first packet it is (starting at 0) nonce + 0, the second is nonce + 1
-and so on. Note that nonces like all other numbers sent over the network in
-toxcore are numbers in big endian format so when increasing them by 1 the least
-significant byte is the last one)
-
-each packet received from the client will be decrypted with the shared key and
-with a nonce equal to: (server base nonce + number of packets sent so for the
-first packet it is (starting at 0) nonce + 0, the second is nonce + 1 and so
-on. Note that nonces like all other numbers sent over the network in toxcore
-are numbers in big endian format so when increasing them by 1 the least
-significant byte is the last one)
-
-Encrypted data packets have a hard maximum size of 2 + 2048 bytes in the
-toxcore TCP server implementation, 2048 bytes is big enough to make sure that
-all toxcore packets can go through and leaves some extra space just in case the
-protocol needs to be changed in the future. The 2 bytes represents the size of
-the data length and the 2048 bytes the max size of the encrypted part. This
-means the maximum size is 2050 bytes. In current toxcore, the largest encrypted
-data packets sent will be of size 2 + 1417 which is 1419 total.
+## TCP Handshake
 
 The logic behind the format of the handshake is that we:
 
-1.  need to prove to the server that we own the private key related to the
-    public key we are announcing ourselves with.
+1.  need to prove to the server that we own the Private Key related to the
+    Public Key we are announcing ourselves with.
 
 2.  need to establish a secure connection that has perfect forward secrecy
 
@@ -1160,16 +1024,16 @@ The logic behind the format of the handshake is that we:
 
 How it accomplishes each of those points:
 
-1.  If the client does not own the private key related to the public key they
+1.  If the client does not own the Private Key related to the Public Key it
     will not be able to create the handshake packet.
 
 2.  Temporary session keys generated by the client and server in the encrypted
-    part of the handshake packets are used to encrypt/decrypt packets during
+    part of the Handshake Packets are used to encrypt/decrypt packets during
     the session.
 
 3.  The following attacks are prevented:
 
-    -   Attacker modifies any byte of the handshake packets: Decryption fail,
+    -   Attacker modifies any byte of the Handshake Packets: Decryption fails,
         no attacks possible.
 
     -   Attacker captures the handshake packet from the client and replays it
@@ -1181,10 +1045,180 @@ How it accomplishes each of those points:
         connection. (See: `TCP_client`)
 
     -   Attacker tries to impersonate a server: They won't be able to decrypt
-        the handshake and won't be able to respond.
+        the Handshake and won't be able to respond.
 
     -   Attacker tries to impersonate a client: Server won't be able to decrypt
-        the handshake.
+        the Handshake.
+
+### Handshake Request
+
+The first 32 bytes in the request are the DHT Public Key that the TCP client is
+announcing itself with to the server. The next 24 bytes are a nonce which the
+TCP client uses along with the Secret Key associated with the public key in the
+first 32 bytes of the packet to encrypt the rest of this packet.
+
+The encrypted payload contains a Temporary Public Key that will be used for
+encryption during the connection and will be discarded after. It also contains
+a base nonce which will be used later for encrypting packets sent to the TCP
+client.
+
+To establish a secure connection with a TCP server client sends the following
+128 bytes of `Handshake Packet` to the server:
+
+| Length | Contents                        |
+|:-------|:--------------------------------|
+| `32`   | DHT Public Key of client        |
+| `24`   | Nonce for the encrypted payload |
+| `72`   | Payload (plus MAC)              |
+
+#### Handshake Request Packet Payload
+
+Payload is encrypted with the DHT Private Key of the client and Public Key of
+the server and the nonce and contains:
+
+| Length | Contents             |
+|:-------|:---------------------|
+| `32`   | Temporary Public Key |
+| `24`   | Base Nonce           |
+
+The Base Nonce is a random nonce that TCP client wants the TCP server to use to
+encrypt the packets sent to the TCP client.
+
+### Handshake Response
+
+If the server successfully decrypts the encrypted payload from the Handshake
+Packet, it responds with the following `Handshake Response` of length 96 bytes:
+
+| Length | Contents                        |
+|:-------|:--------------------------------|
+| `24`   | Nonce for the encrypted payload |
+| `72`   | Payload (plus MAC)              |
+
+The client already knows the long term Public Key of the server so it is
+omitted in the Handshake Response, thus only a nonce is present in the
+unencrypted part. The encrypted payload of the response has the same elements
+as the encrypted payload of the request (CLARIFY: Handshake Packet?): a
+temporary Public Key tied to this connection and a Base Nonce which will be
+used later when decrypting packets received from the TCP client, both unique
+for the connection.
+
+#### Handshake Response Payload
+
+Payload is encrypted with the private key of the server and the DHT public key
+of the client and the nonce and contains:
+
+| Length | Contents   |
+|:-------|:-----------|
+| `32`   | Public key |
+| `24`   | Base Nonce |
+
+The Base Nonce is a random nonce that the TCP server wants the TCP client to
+use to encrypt the packets sent to the TCP server.
+
+## After Handshake
+
+Now client will know the server's temporary Public Key and Base Nonce for the
+connection and the server will know the client's Base Nonce and temporary
+Public Key for the connection.
+
+The client will then send an encrypted packet to the server. The first packet
+must be any valid encrypted data packet that server has to respond to, e.g. if
+client would send [Ping Request (0x04)](#ping-request-0x04) server needs to
+respond with Ping Response.
+
+First packet sent by client and response from server are used to check whether
+client can correctly encrypt sent packet and correctly decrypt received
+response.
+
+It matters also to server, since a correctly encrypted by client request
+signifies that it really came from client and is not from an attacker replying
+packets.
+
+The server must prevent resource consuming attacks by timing out clients if
+they do not send any encrypted packets to the server in order to prove to the
+server that the connection was established correctly.
+
+Toxcore does not have a timeout for clients, instead it stores connecting
+clients in large circular lists and times them out if their entry in the list
+gets replaced by a newer connection. The reasoning behind this is that it
+prevents TCP flood attacks from having a negative impact on the currently
+connected nodes. There are however much better ways to do this and the only
+reason toxcore does it this way is because writing it was very simple. When
+connections are confirmed they are moved somewhere else.
+
+When the server confirms the connection it must look in the list of connected
+peers to see if it is already connected to a client with the same announced
+public key. If this is the case the server must kill the previous connection
+because this means that the client previously timed out and is reconnecting.
+Because of Toxcore design it is very unlikely for two different peers to have
+the same Public Key.
+
+## Encrypted data packet
+
+Encrypted data packets look like this to outsiders:
+
+| Length   | Contents                  |
+|:---------|:--------------------------|
+| `2`      | `uint16_t` length of data |
+| variable | encrypted data            |
+
+In a TCP stream they would look like:
+`[[length][data]][[length][data]][[length][data]]...`.
+
+### Encrypted data packet keys
+
+Both the client and server use the temporary Public and Secret connection keys
+which are each generated for the connection and then Public Key part is sent to
+the other in the [handshake](#tcp-handshake). They are then used like the
+diagram shows to generate a [Combined Key](#combined-key) which is equal on
+both sides:
+
+    Client:                                     Server:
+    generate_shared_key(                        generate_shared_key(
+    [temp connection Public Key of server],     [temp connection Public Key of client],
+    [temp connection Secret Key of client])     [temp connection Secret Key of server])
+    =                                           =
+    [Combined Key]                                [Combined key]
+
+The generated Combined Key is equal on both sides and is used to encrypt and
+decrypt the encrypted data packets.
+
+### Encrypted data packet nonces
+
+#### Encrypted data packets from server
+
+Each encrypted data packet sent to the client will be encrypted with the
+Combined Key and with the Client Base Nonce incremented by the number of
+packets sent: `Client Base Nonce + number of packets sent`.
+
+Number of packets sent starts at `0` for the first packet that uses the Base
+Nonce. Second packet would use `Client Base Nonce + 1`, and so on.
+
+#### Encrypted data packets from client
+
+Each packet sent to server from the client will be encrypted with the Combined
+Key and with Server Base Nonce incremented by number of packets sent:
+`Server Base Nonce + number of packets sent`.
+
+Number of packets sent starts at `0` for the first packet that uses the Base
+Nonce. Second packet would use `Server Base Nonce + 1`, and so on.
+
+### Encrypted data packet size
+
+Encrypted data packets have a hard maximum size of `2 + 2048` bytes in the
+toxcore TCP server implementation.
+
+`2` bytes inform about number of bytes that following data packet has.
+
+`2048` bytes is enough to make sure that all toxcore packets can go through and
+leaves some extra space just in case the protocol needs to be changed in the
+future.
+
+In current toxcore, the largest encrypted data packets sent will be of size `2
++ 1417` which is `1419` total.
+
+
+### Encrypted data packet rationale
 
 The logic behind the format of the encrypted packets is that:
 
@@ -1194,10 +1228,10 @@ The logic behind the format of the encrypted packets is that:
 
 How it accomplishes each of those points:
 
-1.  2 bytes before each packet of encrypted data denote the length. We assume a
-    functioning TCP will deliver bytes in order which makes it work. If the TCP
-    doesn't it most likely means it is under attack and for that see the next
-    point.
+1.  `2` bytes before each packet of encrypted data denote the length. We assume
+    a functioning TCP will deliver bytes in order. If the TCP doesn't work
+    correctly it most likely means that it is under attack and for that see the
+    next point.
 
 2.  The following attacks are prevented:
 
@@ -1216,7 +1250,7 @@ How it accomplishes each of those points:
 
 ## Encrypted payload types
 
-The folowing represents the various types of data that can be sent inside
+The following represents the various types of data that can be sent inside
 encrypted data packets.
 
 ### Routing request (0x00)
@@ -1231,10 +1265,10 @@ encrypted data packets.
 | Length | Contents         |
 |:-------|:-----------------|
 | `1`    | `uint8_t` (0x01) |
-| `1`    | `uint8_t` rpid   |
+| `1`    | `uint8_t` `rpid` |
 | `32`   | Public key       |
 
-rpid is invalid `connection_id` (0) if refused, `connection_id` if accepted.
+`rpid` is invalid `connection_id` (0) if refused, `connection_id` if accepted.
 
 ### Connect notification (0x02)
 
@@ -1250,7 +1284,7 @@ rpid is invalid `connection_id` (0) if refused, `connection_id` if accepted.
 | `1`    | `uint8_t` (0x03)                                              |
 | `1`    | `uint8_t` `connection_id` of connection that got disconnected |
 
-### Ping packet (0x04)
+### Ping request (0x04)
 
 | Length | Contents                            |
 |:-------|:------------------------------------|
