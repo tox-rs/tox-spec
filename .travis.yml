@@ -1,39 +1,9 @@
-language: haskell
-ghc: 7.10
-
-cache:
-  directories:
-    - $HOME/.cabal
-    - $HOME/.ghc
-    - $HOME/.local/bin
-    - $HOME/.stack
-
-before_install:
-# Download and unpack the stack executable
- - mkdir -p ~/.local/bin
- - export PATH=$HOME/.local/bin:$PATH
- - travis_retry curl -L https://www.stackage.org/stack/linux-x86_64 | tar xz --wildcards --strip-components=1 -C ~/.local/bin '*/stack'
-
-install:
-  - mkdir -p ~/rust-installer ~/rust
-  - curl -sL https://static.rust-lang.org/rustup.sh -o ~/rust-installer/rustup.sh
-  - sh ~/rust-installer/rustup.sh --prefix=~/rust --spec=stable -y --disable-sudo 2> /dev/null
-  - export PATH=$PATH:$HOME/rust/bin
-  # pandoc with fixed https://github.com/jgm/pandoc/issues/3277
-  - |
-    git clone \
-        --depth 1 \
-        --recursive \
-        https://github.com/jgm/pandoc.git ~/pandoc
-    ( cd ~/pandoc \
-        && stack setup \
-        && stack install --test )
+language: rust
+rust: stable
 
 script:
-  - make
-  - make format
-  # Check that make format was executed before submitting.
-  - git diff --exit-code
+  - make spec.html
+  - test -f spec.html
 
 branches:
   only:
