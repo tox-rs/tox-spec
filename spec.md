@@ -951,8 +951,6 @@ DHT prioritizes LAN addresses over non LAN addresses for DHT peers. Sending a
 get node request/bootstrapping from a peer successfully should also add them to
 the list of DHT peers if we are searching for them. The peer must not be
 immediately added if a LAN discovery packet with a DHT public key that we are
-searching for is received as there is no cryptographic proof that this packet
-is legitimate and not maliciously crafted. This means that a DHT get node or
 ping packet must be sent, and a valid response must be received, before we can
 say that this peer has been found.
 
@@ -1255,8 +1253,8 @@ first 32 bytes of the packet to encrypt the rest of this packet.
 
 The encrypted payload contains a Temporary Public Key that will be used for
 encryption during the connection and will be discarded after. It also contains
-a base nonce which will be used later for encrypting packets sent to the TCP
-client.
+a Client Base Nonce which will be used later for encrypting packets sent to the
+TCP server.
 
 To establish a secure connection with a TCP server client sends the following
 128 bytes of `Handshake Packet` to the server:
@@ -1275,10 +1273,10 @@ the server and the nonce and contains:
 | Length | Contents             |
 |:-------|:---------------------|
 | `32`   | Temporary Public Key |
-| `24`   | Base Nonce           |
+| `24`   | Client Base Nonce    |
 
-The Base Nonce is a random nonce that TCP client wants the TCP server to use to
-encrypt the packets sent to the TCP client.
+The Client Base Nonce is a random nonce that TCP client wants the TCP server to
+use to decrypt the packets sent to the TCP server.
 
 ### Handshake Response
 
@@ -1293,28 +1291,28 @@ Packet, it responds with the following `Handshake Response` of length 96 bytes:
 The client already knows the long term Public Key of the server so it is
 omitted in the Handshake Response, thus only a nonce is present in the
 unencrypted part. The encrypted payload of the response has the same elements
-as the encrypted payload of the request (CLARIFY: Handshake Packet?): a
-temporary Public Key tied to this connection and a Base Nonce which will be
-used later when decrypting packets received from the TCP client, both unique
-for the connection.
+as the encrypted payload of the Handshake Request: a temporary Public Key tied
+to this connection and a Server Base Nonce which will be used later when
+decrypting packets received from the TCP server, both unique for the
+connection.
 
 #### Handshake Response Payload
 
 Payload is encrypted with the private key of the server and the DHT public key
 of the client and the nonce and contains:
 
-| Length | Contents   |
-|:-------|:-----------|
-| `32`   | Public key |
-| `24`   | Base Nonce |
+| Length | Contents          |
+|:-------|:------------------|
+| `32`   | Public key        |
+| `24`   | Server Base Nonce |
 
-The Base Nonce is a random nonce that the TCP server wants the TCP client to
-use to encrypt the packets sent to the TCP server.
+The Server Base Nonce is a random nonce that the TCP server wants the TCP
+client to use to decrypt the packets sent to the TCP client.
 
 ## After Handshake
 
-Now client will know the server's temporary Public Key and Base Nonce for the
-connection and the server will know the client's Base Nonce and temporary
+Now client will know the server's temporary Public Key and Server Base Nonce
+for the connection and the server will know the Client Base Nonce and temporary
 Public Key for the connection.
 
 The client will then send an encrypted packet to the server. The first packet
@@ -1344,7 +1342,7 @@ connections are confirmed they are moved somewhere else.
 
 When the server confirms the connection it must look in the list of connected
 peers to see if it is already connected to a client with the same announced
-public key. If this is the case the server must kill the previous connection
+Public Key. If this is the case the server must kill the previous connection
 because this means that the client previously timed out and is reconnecting.
 Because of Toxcore design it is very unlikely for two different peers to have
 the same Public Key.
@@ -1384,20 +1382,20 @@ decrypt the encrypted data packets.
 #### Encrypted data packets from server
 
 Each encrypted data packet sent to the client will be encrypted with the
-Combined Key and with the Client Base Nonce incremented by the number of
-packets sent: `Client Base Nonce + number of packets sent`.
+Combined Key and with the Server Base Nonce incremented by the number of
+packets sent: `Server Base Nonce + number of packets sent`.
 
-Number of packets sent starts at `0` for the first packet that uses the Base
-Nonce. Second packet would use `Client Base Nonce + 1`, and so on.
+Number of packets sent starts at `0` for the first packet that uses the Server
+Base Nonce. Second packet would use `Server Base Nonce + 1`, and so on.
 
 #### Encrypted data packets from client
 
 Each packet sent to server from the client will be encrypted with the Combined
-Key and with Server Base Nonce incremented by number of packets sent:
-`Server Base Nonce + number of packets sent`.
+Key and with Client Base Nonce incremented by number of packets sent:
+`Client Base Nonce + number of packets sent`.
 
-Number of packets sent starts at `0` for the first packet that uses the Base
-Nonce. Second packet would use `Server Base Nonce + 1`, and so on.
+Number of packets sent starts at `0` for the first packet that uses the Client
+Base Nonce. Second packet would use `Client Base Nonce + 1`, and so on.
 
 ### Encrypted data packet size
 
